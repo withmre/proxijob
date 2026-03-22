@@ -6,7 +6,7 @@ interface Company {
   siret: string
   name: string
   naf_code: string
-  naf_label: string
+  naf_label?: string
   address: string
   postal_code: string
   city: string
