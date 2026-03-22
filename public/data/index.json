@@ -1,0 +1,511 @@
+{
+  "generated_at": "2026-03-22T16:47:34.216220",
+  "total": 27703,
+  "departments": [
+    {
+      "dept": "01",
+      "name": "Ain",
+      "count": 247
+    },
+    {
+      "dept": "02",
+      "name": "Aisne",
+      "count": 164
+    },
+    {
+      "dept": "03",
+      "name": "Allier",
+      "count": 126
+    },
+    {
+      "dept": "04",
+      "name": "Alpes-de-Haute-Provence",
+      "count": 61
+    },
+    {
+      "dept": "05",
+      "name": "Hautes-Alpes",
+      "count": 45
+    },
+    {
+      "dept": "06",
+      "name": "Alpes-Maritimes",
+      "count": 454
+    },
+    {
+      "dept": "07",
+      "name": "Ardèche",
+      "count": 126
+    },
+    {
+      "dept": "08",
+      "name": "Ardennes",
+      "count": 100
+    },
+    {
+      "dept": "09",
+      "name": "Ariège",
+      "count": 51
+    },
+    {
+      "dept": "10",
+      "name": "Aube",
+      "count": 119
+    },
+    {
+      "dept": "11",
+      "name": "Aude",
+      "count": 153
+    },
+    {
+      "dept": "12",
+      "name": "Aveyron",
+      "count": 102
+    },
+    {
+      "dept": "13",
+      "name": "Bouches-du-Rhône",
+      "count": 875
+    },
+    {
+      "dept": "14",
+      "name": "Calvados",
+      "count": 323
+    },
+    {
+      "dept": "15",
+      "name": "Cantal",
+      "count": 54
+    },
+    {
+      "dept": "16",
+      "name": "Charente",
+      "count": 137
+    },
+    {
+      "dept": "17",
+      "name": "Charente-Maritime",
+      "count": 252
+    },
+    {
+      "dept": "18",
+      "name": "Cher",
+      "count": 90
+    },
+    {
+      "dept": "19",
+      "name": "Corrèze",
+      "count": 99
+    },
+    {
+      "dept": "21",
+      "name": "Côte-d'Or",
+      "count": 285
+    },
+    {
+      "dept": "22",
+      "name": "Côtes-d'Armor",
+      "count": 236
+    },
+    {
+      "dept": "23",
+      "name": "Creuse",
+      "count": 39
+    },
+    {
+      "dept": "24",
+      "name": "Dordogne",
+      "count": 129
+    },
+    {
+      "dept": "25",
+      "name": "Doubs",
+      "count": 205
+    },
+    {
+      "dept": "26",
+      "name": "Drôme",
+      "count": 223
+    },
+    {
+      "dept": "27",
+      "name": "Eure",
+      "count": 177
+    },
+    {
+      "dept": "28",
+      "name": "Eure-et-Loir",
+      "count": 154
+    },
+    {
+      "dept": "29",
+      "name": "Finistère",
+      "count": 390
+    },
+    {
+      "dept": "2A",
+      "name": "Corse-du-Sud",
+      "count": 69
+    },
+    {
+      "dept": "2B",
+      "name": "Haute-Corse",
+      "count": 53
+    },
+    {
+      "dept": "30",
+      "name": "Gard",
+      "count": 247
+    },
+    {
+      "dept": "31",
+      "name": "Haute-Garonne",
+      "count": 664
+    },
+    {
+      "dept": "32",
+      "name": "Gers",
+      "count": 55
+    },
+    {
+      "dept": "33",
+      "name": "Gironde",
+      "count": 736
+    },
+    {
+      "dept": "34",
+      "name": "Hérault",
+      "count": 532
+    },
+    {
+      "dept": "35",
+      "name": "Ille-et-Vilaine",
+      "count": 521
+    },
+    {
+      "dept": "36",
+      "name": "Indre",
+      "count": 75
+    },
+    {
+      "dept": "37",
+      "name": "Indre-et-Loire",
+      "count": 297
+    },
+    {
+      "dept": "38",
+      "name": "Isère",
+      "count": 516
+    },
+    {
+      "dept": "39",
+      "name": "Jura",
+      "count": 98
+    },
+    {
+      "dept": "40",
+      "name": "Landes",
+      "count": 168
+    },
+    {
+      "dept": "41",
+      "name": "Loir-et-Cher",
+      "count": 121
+    },
+    {
+      "dept": "42",
+      "name": "Loire",
+      "count": 301
+    },
+    {
+      "dept": "43",
+      "name": "Haute-Loire",
+      "count": 80
+    },
+    {
+      "dept": "44",
+      "name": "Loire-Atlantique",
+      "count": 687
+    },
+    {
+      "dept": "45",
+      "name": "Loiret",
+      "count": 261
+    },
+    {
+      "dept": "46",
+      "name": "Lot",
+      "count": 56
+    },
+    {
+      "dept": "47",
+      "name": "Lot-et-Garonne",
+      "count": 100
+    },
+    {
+      "dept": "48",
+      "name": "Lozère",
+      "count": 38
+    },
+    {
+      "dept": "49",
+      "name": "Maine-et-Loire",
+      "count": 391
+    },
+    {
+      "dept": "50",
+      "name": "Manche",
+      "count": 202
+    },
+    {
+      "dept": "51",
+      "name": "Marne",
+      "count": 246
+    },
+    {
+      "dept": "52",
+      "name": "Haute-Marne",
+      "count": 44
+    },
+    {
+      "dept": "53",
+      "name": "Mayenne",
+      "count": 99
+    },
+    {
+      "dept": "54",
+      "name": "Meurthe-et-Moselle",
+      "count": 309
+    },
+    {
+      "dept": "55",
+      "name": "Meuse",
+      "count": 49
+    },
+    {
+      "dept": "56",
+      "name": "Morbihan",
+      "count": 295
+    },
+    {
+      "dept": "57",
+      "name": "Moselle",
+      "count": 375
+    },
+    {
+      "dept": "58",
+      "name": "Nièvre",
+      "count": 83
+    },
+    {
+      "dept": "59",
+      "name": "Nord",
+      "count": 1122
+    },
+    {
+      "dept": "60",
+      "name": "Oise",
+      "count": 283
+    },
+    {
+      "dept": "61",
+      "name": "Orne",
+      "count": 86
+    },
+    {
+      "dept": "62",
+      "name": "Pas-de-Calais",
+      "count": 541
+    },
+    {
+      "dept": "63",
+      "name": "Puy-de-Dôme",
+      "count": 314
+    },
+    {
+      "dept": "64",
+      "name": "Pyrénées-Atlantiques",
+      "count": 269
+    },
+    {
+      "dept": "65",
+      "name": "Hautes-Pyrénées",
+      "count": 87
+    },
+    {
+      "dept": "66",
+      "name": "Pyrénées-Orientales",
+      "count": 174
+    },
+    {
+      "dept": "67",
+      "name": "Bas-Rhin",
+      "count": 448
+    },
+    {
+      "dept": "68",
+      "name": "Haut-Rhin",
+      "count": 273
+    },
+    {
+      "dept": "69",
+      "name": "Rhône",
+      "count": 996
+    },
+    {
+      "dept": "70",
+      "name": "Haute-Saône",
+      "count": 73
+    },
+    {
+      "dept": "71",
+      "name": "Saône-et-Loire",
+      "count": 202
+    },
+    {
+      "dept": "72",
+      "name": "Sarthe",
+      "count": 220
+    },
+    {
+      "dept": "73",
+      "name": "Savoie",
+      "count": 248
+    },
+    {
+      "dept": "74",
+      "name": "Haute-Savoie",
+      "count": 351
+    },
+    {
+      "dept": "75",
+      "name": "Paris",
+      "count": 1634
+    },
+    {
+      "dept": "76",
+      "name": "Seine-Maritime",
+      "count": 519
+    },
+    {
+      "dept": "77",
+      "name": "Seine-et-Marne",
+      "count": 558
+    },
+    {
+      "dept": "78",
+      "name": "Yvelines",
+      "count": 550
+    },
+    {
+      "dept": "79",
+      "name": "Deux-Sèvres",
+      "count": 143
+    },
+    {
+      "dept": "80",
+      "name": "Somme",
+      "count": 200
+    },
+    {
+      "dept": "81",
+      "name": "Tarn",
+      "count": 146
+    },
+    {
+      "dept": "82",
+      "name": "Tarn-et-Garonne",
+      "count": 89
+    },
+    {
+      "dept": "83",
+      "name": "Var",
+      "count": 393
+    },
+    {
+      "dept": "84",
+      "name": "Vaucluse",
+      "count": 211
+    },
+    {
+      "dept": "85",
+      "name": "Vendée",
+      "count": 280
+    },
+    {
+      "dept": "86",
+      "name": "Vienne",
+      "count": 210
+    },
+    {
+      "dept": "87",
+      "name": "Haute-Vienne",
+      "count": 173
+    },
+    {
+      "dept": "88",
+      "name": "Vosges",
+      "count": 128
+    },
+    {
+      "dept": "89",
+      "name": "Yonne",
+      "count": 116
+    },
+    {
+      "dept": "90",
+      "name": "Territoire de Belfort",
+      "count": 47
+    },
+    {
+      "dept": "91",
+      "name": "Essonne",
+      "count": 489
+    },
+    {
+      "dept": "92",
+      "name": "Hauts-de-Seine",
+      "count": 868
+    },
+    {
+      "dept": "93",
+      "name": "Seine-Saint-Denis",
+      "count": 558
+    },
+    {
+      "dept": "94",
+      "name": "Val-de-Marne",
+      "count": 464
+    },
+    {
+      "dept": "95",
+      "name": "Val-d'Oise",
+      "count": 443
+    },
+    {
+      "dept": "971",
+      "name": "Guadeloupe",
+      "count": 120
+    },
+    {
+      "dept": "972",
+      "name": "Martinique",
+      "count": 143
+    },
+    {
+      "dept": "973",
+      "name": "Guyane",
+      "count": 68
+    },
+    {
+      "dept": "974",
+      "name": "La Réunion",
+      "count": 273
+    },
+    {
+      "dept": "[N",
+      "name": "Département [N",
+      "count": 9
+    }
+  ]
+}
