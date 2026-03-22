@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "city": "Paris",
+    "department": "75",
+    "count": 12,
+    "description": "Sample entreprises Paris intra-muros"
+  },
+  "companies": [
+    {
+      "siret": "77567041700029",
+      "name": "Capgemini",
+      "naf_code": "62.01Z",
+      "naf_label": "Programmation informatique",
+      "address": "11 rue de Tilsitt",
+      "postal_code": "75017",
+      "city": "PARIS",
+      "lat": 48.8756,
+      "lng": 2.2950
+    },
+    {
+      "siret": "48009368800021",
+      "name": "Sopra Steria",
+      "naf_code": "62.01Z",
+      "naf_label": "Programmation informatique",
+      "address": "9 rue du Fort",
+      "postal_code": "75014",
+      "city": "PARIS",
+      "lat": 48.8333,
+      "lng": 2.3267
+    },
+    {
+      "siret": "78425056000023",
+      "name": "BNP Paribas",
+      "naf_code": "64.19Z",
+      "naf_label": "Autres intermédiations monétaires",
+      "address": "16 boulevard des Italiens",
+      "postal_code": "75009",
+      "city": "PARIS",
+      "lat": 48.8715,
+      "lng": 2.3360
+    },
+    {
+      "siret": "55208131766522",
+      "name": "Société Générale",
+      "naf_code": "64.19Z",
+      "naf_label": "Autres intermédiations monétaires",
+      "address": "29 boulevard Haussmann",
+      "postal_code": "75009",
+      "city": "PARIS",
+      "lat": 48.8725,
+      "lng": 2.3380
+    },
+    {
+      "siret": "41816609600069",
+      "name": "Accenture",
+      "naf_code": "70.22Z",
+      "naf_label": "Conseil pour les affaires",
+      "address": "118 avenue de France",
+      "postal_code": "75013",
+      "city": "PARIS",
+      "lat": 48.8390,
+      "lng": 2.3760
+    },
+    {
+      "siret": "32935667600089",
+      "name": "L'Oréal",
+      "naf_code": "20.41Z",
+      "naf_label": "Fabrication de savons et détergents",
+      "address": "41 rue Martre",
+      "postal_code": "75017",
+      "city": "PARIS",
+      "lat": 48.8890,
+      "lng": 2.3280
+    },
+    {
+      "siret": "38012986600023",
+      "name": "TotalEnergies",
+      "naf_code": "06.10Z",
+      "naf_label": "Extraction de pétrole brut",
+      "address": "2 place Jean Millier",
+      "postal_code": "75016",
+      "city": "PARIS",
+      "lat": 48.8620,
+      "lng": 2.2780
+    },
+    {
+      "siret": "57209504000566",
+      "name": "AXA France",
+      "naf_code": "65.12Z",
+      "naf_label": "Autres assurances",
+      "address": "313 rue de Bercy",
+      "postal_code": "75012",
+      "city": "PARIS",
+      "lat": 48.8310,
+      "lng": 2.3850
+    },
+    {
+      "siret": "39337976300029",
+      "name": "Publicis",
+      "naf_code": "73.11Z",
+      "naf_label": "Activités des agences de publicité",
+      "address": "133 avenue des Champs-Élysées",
+      "postal_code": "75008",
+      "city": "PARIS",
+      "lat": 48.8720,
+      "lng": 2.3000
+    },
+    {
+      "siret": "44317747100011",
+      "name": "Orange",
+      "naf_code": "61.10Z",
+      "naf_label": "Télécommunications filaires",
+      "address": "78 rue Olivier de Serres",
+      "postal_code": "75015",
+      "city": "PARIS",
+      "lat": 48.8350,
+      "lng": 2.3000
+    },
+    {
+      "siret": "33877703700057",
+      "name": "Air France",
+      "naf_code": "51.10Z",
+      "naf_label": "Transport aérien de passagers",
+      "address": "45 rue de Paris",
+      "postal_code": "75008",
+      "city": "PARIS",
+      "lat": 48.8750,
+      "lng": 2.3200
+    },
+    {
+      "siret": "72200724900020",
+      "name": "EDF",
+      "naf_code": "35.11Z",
+      "naf_label": "Production d'électricité",
+      "address": "22 avenue de Wagram",
+      "postal_code": "75008",
+      "city": "PARIS",
+      "lat": 48.8760,
+      "lng": 2.2980
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "city": "Lyon",
+    "department": "69",
+    "count": 10,
+    "description": "Sample entreprises Lyon"
+  },
+  "companies": [
+    {
+      "siret": "95450715700010",
+      "name": "Sanofi Pasteur",
+      "naf_code": "21.20Z",
+      "naf_label": "Fabrication de préparations pharmaceutiques",
+      "address": "2 avenue Tony Garnier",
+      "postal_code": "69007",
+      "city": "LYON",
+      "lat": 45.7310,
+      "lng": 4.8350
+    },
+    {
+      "siret": "38012986600049",
+      "name": "TotalEnergies Lyon",
+      "naf_code": "47.30Z",
+      "naf_label": "Commerce de carburants",
+      "address": "35 rue de la République",
+      "postal_code": "69002",
+      "city": "LYON",
+      "lat": 45.7640,
+      "lng": 4.8357
+    },
+    {
+      "siret": "78425056000049",
+      "name": "BNP Paribas Lyon",
+      "naf_code": "64.19Z",
+      "naf_label": "Autres intermédiations monétaires",
+      "address": "49 rue de la République",
+      "postal_code": "69002",
+      "city": "LYON",
+      "lat": 45.7645,
+      "lng": 4.8360
+    },
+    {
+      "siret": "57209504000582",
+      "name": "AXA Lyon",
+      "naf_code": "65.12Z",
+      "naf_label": "Autres assurances",
+      "address": "12 place Bellecour",
+      "postal_code": "69002",
+      "city": "LYON",
+      "lat": 45.7578,
+      "lng": 4.8320
+    },
+    {
+      "siret": "77567041700049",
+      "name": "Capgemini Lyon",
+      "naf_code": "62.01Z",
+      "naf_label": "Programmation informatique",
+      "address": "129 rue Servient",
+      "postal_code": "69003",
+      "city": "LYON",
+      "lat": 45.7600,
+      "lng": 4.8450
+    },
+    {
+      "siret": "41816609600085",
+      "name": "Accenture Lyon",
+      "naf_code": "70.22Z",
+      "naf_label": "Conseil pour les affaires",
+      "address": "55 avenue Maréchal de Saxe",
+      "postal_code": "69006",
+      "city": "LYON",
+      "lat": 45.7690,
+      "lng": 4.8480
+    },
+    {
+      "siret": "48009368800049",
+      "name": "Sopra Steria Lyon",
+      "naf_code": "62.01Z",
+      "naf_label": "Programmation informatique",
+      "address": "3 rue du Président Carnot",
+      "postal_code": "69002",
+      "city": "LYON",
+      "lat": 45.7630,
+      "lng": 4.8330
+    },
+    {
+      "siret": "39337976300049",
+      "name": "Publicis Lyon",
+      "naf_code": "73.11Z",
+      "naf_label": "Activités des agences de publicité",
+      "address": "21 rue de la République",
+      "postal_code": "69001",
+      "city": "LYON",
+      "lat": 45.7660,
+      "lng": 4.8355
+    },
+    {
+      "siret": "55208131766549",
+      "name": "Société Générale Lyon",
+      "naf_code": "64.19Z",
+      "naf_label": "Autres intermédiations monétaires",
+      "address": "28 place Bellecour",
+      "postal_code": "69002",
+      "city": "LYON",
+      "lat": 45.7570,
+      "lng": 4.8330
+    },
+    {
+      "siret": "32935667600049",
+      "name": "L'Oréal Lyon",
+      "naf_code": "20.41Z",
+      "naf_label": "Fabrication de savons et détergents",
+      "address": "88 rue de la République",
+      "postal_code": "69002",
+      "city": "LYON",
+      "lat": 45.7650,
+      "lng": 4.8370
+    }
+  ]
+}
