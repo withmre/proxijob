@@ -11,7 +11,7 @@ interface Company {
   postal_code: string
   city: string
   lat: number
-  lng: number
+  lon: number
 }
 
 interface MapViewProps {
@@ -103,7 +103,7 @@ export function MapView({
     const bounds = L.latLngBounds([])
     
     companies.forEach(company => {
-      const marker = L.marker([company.lat, company.lng], {
+      const marker = L.marker([company.lat, company.lon], {
         icon: createMarkerIcon(false),
       })
 
@@ -148,7 +148,7 @@ export function MapView({
 
       marker.addTo(map)
       markersMapRef.current.set(company.siret, marker)
-      bounds.extend([company.lat, company.lng])
+      bounds.extend([company.lat, company.lon])
     })
 
     // Ajuster la vue pour englober tous les marqueurs
