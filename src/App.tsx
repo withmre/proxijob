@@ -68,90 +68,183 @@ const FORMATIONS = [
   { id: 'autre',        name: 'Autre' },
 ]
 
-const FORMATION_NAF_CODES: Record<string, string[]> = {
+// ─── Filtrage NAF par PRÉFIXES ────────────────────────────────────────────────
+//
+// Plutôt que de lister chaque code individuellement (ex: 47.11A, 47.11B, 47.11C...),
+// on utilise des PRÉFIXES qui couvrent toute une sous-section NAF.
+// Ex: préfixe "47" couvre 47.11A, 47.19B, 47.41Z, 47.91A... soit TOUT le commerce de détail.
+//
+// Logique : naf_code.startsWith(prefix) pour chaque prefix de la liste.
+
+const FORMATION_NAF_PREFIXES: Record<string, string[]> = {
+
   informatique: [
-    // Cœur IT
-    '62.01Z', '62.02A', '62.02B', '62.03Z', '62.09Z',
-    '63.11Z', '63.12Z', '63.91Z',
-    // Éditeurs & télécoms
-    '58.21Z', '58.29A', '58.29B', '58.29C',
-    '61.10Z', '61.20Z', '61.30Z', '61.90Z',
-    // Conseil & ingénierie numérique
-    '70.22Z', '71.12B', '72.19Z', '74.90B',
-    // Finance/banque (grosses DSI)
-    '64.19Z', '64.20Z', '65.11Z', '66.19A',
-    // Industrie tech
-    '26.11Z', '26.20Z', '26.30Z', '27.90Z',
+    // ── Cœur IT ──────────────────────────────────────────────────────────────
+    '62',          // Programmation, conseil, activités informatiques (62.01Z à 62.09Z)
+    '63.1',        // Traitement données, hébergement, portails (63.11Z, 63.12Z)
+    // ── Éditeurs de logiciels ─────────────────────────────────────────────────
+    '58.2',        // Édition de logiciels (58.21Z, 58.29A/B/C)
+    // ── Télécommunications ────────────────────────────────────────────────────
+    '61',          // Tous les opérateurs télécoms (61.10Z à 61.90Z)
+    // ── Ingénierie & R&D numérique ────────────────────────────────────────────
+    '71.12',       // Ingénierie & études techniques (71.12A/B)
+    '72',          // Recherche & développement (72.11Z, 72.19Z, 72.20Z)
+    // ── Conseil & management (cabinets avec DSI) ──────────────────────────────
+    '70.2',        // Conseil pour les affaires (70.21Z, 70.22Z)
+    // ── Industrie électronique & matériel ─────────────────────────────────────
+    '26',          // Fabrication de produits informatiques/électroniques (26.11Z à 26.80Z)
+    '27.1', '27.9',// Équipements électriques
+    // ── Finance & banque (DSI importantes) ───────────────────────────────────
+    '64.1', '64.2',// Banques et établissements financiers
+    '65.1',        // Assurances
+    '66.1',        // Auxiliaires financiers
   ],
+
   finance: [
-    // Cœur finance/banque/assurance
-    '64.11Z', '64.19Z', '64.20Z', '64.30Z',
-    '65.11Z', '65.12Z', '65.20Z',
-    '66.11Z', '66.12Z', '66.19A', '66.19B', '66.22Z', '66.29Z',
-    // Conseil / audit / expertise comptable
-    '69.20Z', '70.22Z', '74.90B',
-    // Immobilier
-    '68.10Z', '68.20A', '68.20B', '68.31Z', '68.32A',
-    // Secteur public (trésor, collectivités)
-    '84.11Z', '84.12Z',
+    // ── Banques & établissements de crédit ────────────────────────────────────
+    '64',          // Toute la section : banques, holdings, OPCVM (64.11Z à 64.99Z)
+    // ── Assurances ────────────────────────────────────────────────────────────
+    '65',          // Assurance vie, non-vie, réassurance (65.11Z à 65.30Z)
+    // ── Auxiliaires financiers & assurance ───────────────────────────────────
+    '66',          // Gestion de fonds, courtage, auxiliaires (66.11Z à 66.29Z)
+    // ── Audit / expertise comptable ──────────────────────────────────────────
+    '69.2',        // Activités comptables (69.20Z)
+    // ── Conseil financier & stratégique ──────────────────────────────────────
+    '70.2',        // Conseil aux entreprises (70.21Z, 70.22Z)
+    // ── Immobilier (asset management, foncières) ──────────────────────────────
+    '68',          // Toute la section immobilier (68.10Z à 68.32B)
+    // ── Secteur public financier ──────────────────────────────────────────────
+    '84.1',        // Administration générale (trésor, collectivités)
   ],
+
   marketing: [
-    // Cœur pub / com / marketing
-    '73.11Z', '73.12Z', '73.20Z',
-    '70.21Z', '70.22Z',
-    // Médias, édition, événementiel
-    '59.11A', '59.11B', '59.11C', '59.12Z', '59.20Z',
-    '60.10Z', '60.20A', '60.20B',
-    '90.01Z', '90.02Z', '82.30Z',
-    // E-commerce & distribution
-    '47.91A', '47.91B', '47.99B',
-    '46.90Z', '47.11A', '47.19A',
-    // Conseil & design
-    '74.10Z', '74.20Z', '74.90B',
+    // ── Publicité & communication ─────────────────────────────────────────────
+    '73',          // Toute la section : agences pub, études de marché, relations publiques
+    // ── Conseil & communication corporate ────────────────────────────────────
+    '70.2',        // Conseil aux entreprises (70.21Z communication, 70.22Z conseil)
+    // ── Médias & édition ──────────────────────────────────────────────────────
+    '58',          // Édition (livres, presse, logiciels) — 58.11Z à 58.29C
+    '59',          // Production cinéma, vidéo, TV, musique (59.11A à 59.20Z)
+    '60',          // Radio et télévision (60.10Z, 60.20A/B)
+    // ── Événementiel & arts ───────────────────────────────────────────────────
+    '82.3',        // Organisation de salons, congrès (82.30Z)
+    '90',          // Arts du spectacle, création artistique (90.01Z à 90.03Z)
+    // ── E-commerce & distribution (équipes growth/digital) ───────────────────
+    '47.9',        // Commerce de détail hors magasin (e-commerce : 47.91A/B, 47.99A/B)
+    // ── Design & création ────────────────────────────────────────────────────
+    '74.1',        // Activités spécialisées de design (74.10Z)
+    '74.2',        // Activités photographiques (74.20Z)
+    // ── Conseil IT (digital marketing / analytics) ────────────────────────────
+    '62',          // Développement & conseil IT
+    '63.1',        // Data / web analytics
   ],
+
   ingenierie: [
-    // Bureau d'études / ingénierie
-    '71.11Z', '71.12A', '71.12B', '72.19Z',
-    // Industrie manufacturing
-    '24.10Z', '24.20Z', '25.11Z', '25.61Z', '25.62Z',
-    '28.11Z', '28.15Z', '28.22Z', '28.29Z',
-    '29.10Z', '29.20Z', '29.32Z',
-    '30.11Z', '30.20Z', '30.30Z',
-    // Construction & énergie
-    '41.10A', '41.10B', '41.20A', '41.20B',
-    '42.21Z', '42.22Z', '43.21A', '43.22A', '43.22B',
-    '35.11Z', '35.12Z', '35.13Z', '35.14Z',
-    // Aéronautique / défense
-    '30.40Z', '33.16Z', '33.19Z',
+    // ── Bureaux d'études & ingénierie ─────────────────────────────────────────
+    '71',          // Architecture, ingénierie, contrôle (71.11Z à 71.20B)
+    // ── Recherche & développement ────────────────────────────────────────────
+    '72',          // R&D sciences physiques, naturelles (72.11Z à 72.20Z)
+    // ── Industrie manufacturière ──────────────────────────────────────────────
+    '24',          // Métallurgie (24.10Z à 24.54Z)
+    '25',          // Produits métalliques (25.11Z à 25.99Z)
+    '26',          // Électronique & informatique (26.11Z à 26.80Z)
+    '27',          // Équipements électriques (27.11Z à 27.90Z)
+    '28',          // Machines & équipements (28.11Z à 28.99Z)
+    '29',          // Automobile (29.10Z à 29.32Z)
+    '30',          // Autres matériels de transport (30.11Z à 30.99Z)
+    '33',          // Réparation & installation machines (33.11Z à 33.20Z)
+    // ── Construction & génie civil ────────────────────────────────────────────
+    '41',          // Promotion & construction immobilière (41.10A à 41.20B)
+    '42',          // Génie civil (routes, ponts, réseaux) (42.11Z à 42.99Z)
+    '43',          // Travaux de construction spécialisés (43.11Z à 43.99Z)
+    // ── Énergie ──────────────────────────────────────────────────────────────
+    '35',          // Production & distribution énergie/gaz/vapeur (35.11Z à 35.30Z)
+    '19',          // Raffinage pétrole (19.10Z, 19.20Z)
+    // ── Extraction & mines ────────────────────────────────────────────────────
+    '05', '06', '07', '08', '09', // Extraction
+    // ── Aéronautique / Défense / Naval ────────────────────────────────────────
+    '30.3',        // Aéronautique (30.30Z)
+    '30.4',        // Véhicules militaires (30.40Z)
+    '30.1',        // Construction navale (30.11Z, 30.12Z)
   ],
+
   rh: [
-    // Cœur RH / recrutement / intérim
-    '78.10Z', '78.20Z', '78.30Z',
-    '80.10Z', '80.20Z', '80.30Z',
-    // Formation professionnelle
-    '85.59A', '85.59B', '85.60Z',
-    // Conseil RH / coaching
-    '70.22Z', '74.90B',
-    // Secteur public (DRH structurées)
-    '84.11Z', '84.12Z', '84.13Z',
-    // Santé & social (gros employeurs)
-    '86.10Z', '86.21Z', '87.10A', '87.10B', '87.30A', '88.10A', '88.10B',
+    // ── Recrutement, intérim, placement ──────────────────────────────────────
+    '78',          // Toute la section : recrutement (78.10Z), intérim (78.20Z), autres (78.30Z)
+    // ── Sécurité & nettoyage (gros employeurs, DRH structurées) ──────────────
+    '80',          // Enquêtes & sécurité (80.10Z, 80.20Z, 80.30Z)
+    '81',          // Services aux bâtiments : nettoyage, jardinage (81.10Z à 81.30Z)
+    // ── Formation professionnelle ─────────────────────────────────────────────
+    '85.5',        // Formation pour adultes (85.51Z, 85.52Z, 85.59A/B)
+    '85.6',        // Conseil & orientation (85.60Z)
+    // ── Conseil RH & management ──────────────────────────────────────────────
+    '70.2',        // Conseil aux entreprises (70.22Z inclut conseil RH/organisation)
+    '74.9',        // Autres activités professionnelles (74.90A/B — coaching, conseil)
+    // ── Secteur public (grandes DRH) ─────────────────────────────────────────
+    '84',          // Administration publique (84.11Z à 84.30C)
+    // ── Santé & social (gros employeurs avec DRH) ────────────────────────────
+    '86',          // Activités hospitalières & médicales (86.10Z à 86.90F)
+    '87',          // Hébergement médico-social (87.10A à 87.90B)
+    '88',          // Action sociale sans hébergement (88.10A à 88.99B)
+    // ── Transport (gros employeurs) ───────────────────────────────────────────
+    '49',          // Transport terrestre (SNCF, bus...) (49.10Z à 49.50Z)
   ],
+
   commerce: [
-    // Distribution & retail
-    '45.11Z', '45.19Z', '45.20A',
-    '46.10Z', '46.90Z',
-    '47.11A', '47.11B', '47.11C', '47.11D', '47.11E',
-    '47.19A', '47.19B',
-    '47.41Z', '47.42Z', '47.43Z', '47.51Z', '47.71Z', '47.72A',
+    // ── Commerce de détail — TOUS les sous-secteurs ───────────────────────────
+    // Supermarchés, hypermarchés, épiceries
+    '47.1',        // Commerce en magasin non spécialisé (Carrefour, Leclerc, Auchan, Lidl...)
+    // Alimentaire spécialisé
+    '47.2',        // Alimentation spécialisée (bouchers, boulangers, poissonniers...)
+    // High-tech & électroménager
+    '47.4',        // Équipements informatiques & électroniques (Fnac, Darty, Apple Store...)
+    // Bricolage & jardinage
+    '47.5',        // Équipements ménagers (Leroy Merlin, Castorama, Ikea...)
+    // Textile, habillement, chaussures
+    '47.7',        // Articles d'habillement, chaussures, maroquinerie (Zara, H&M, Nike...)
+    // Jeux, jouets, sport, livres, musique
+    '47.6',        // Livres, journaux, papeterie, jeux (Cultura, Fnac, Game...)
+    // Automobile & accessoires
+    '47.3',        // Carburants (stations-service)
+    // Pharmacies & soins
+    '47.7',        // Pharmacies, optique, parapharmacie
     // E-commerce
-    '47.91A', '47.91B',
-    // Hôtellerie / restauration
-    '55.10Z', '55.20Z', '56.10A', '56.10B', '56.29A',
-    // Conseil commercial
-    '70.22Z', '73.20Z',
+    '47.9',        // Vente à distance et e-commerce (Amazon, Cdiscount, Vinted...)
+    // ── Commerce de gros ─────────────────────────────────────────────────────
+    '46',          // Commerce de gros (agents, grossistes) — 46.11Z à 46.90Z
+    // ── Automobile (vente & réparation) ──────────────────────────────────────
+    '45',          // Commerce & réparation auto/moto (45.11Z à 45.40Z)
+    // ── Hôtellerie & restauration (vente de service client) ──────────────────
+    '55',          // Hébergement (hôtels, campings) (55.10Z à 55.90Z)
+    '56',          // Restauration (restaurants, fast-food, livraison) (56.10A à 56.30Z)
+    // ── Transport & logistique (lié au commerce) ──────────────────────────────
+    '49.4',        // Transport routier de marchandises (49.41A/B, 49.42Z)
+    '52',          // Entreposage & services auxiliaires des transports (52.10A à 52.29B)
+    // ── Conseil commercial & marketing ───────────────────────────────────────
+    '70.2',        // Conseil aux entreprises (développement commercial)
+    '73.2',        // Études de marché & sondages (73.20Z)
   ],
-  autre: [],
+
+  autre: [], // Pas de filtre NAF — tout afficher
+}
+
+// ─── Fonction de match par préfixe ────────────────────────────────────────────
+
+function matchesNafPrefixes(nafCode: string, prefixes: string[]): boolean {
+  if (!nafCode || prefixes.length === 0) return true
+  // Normalise le code : "47.11A" -> on teste si startsWith("47.1"), "47.", "47" etc.
+  const code = nafCode.trim()
+  return prefixes.some(prefix => {
+    const p = prefix.trim()
+    // Préfixe avec point (ex: "47.1") → match exact du début
+    // Préfixe sans point (ex: "47") → match la section entière
+    if (p.includes('.')) {
+      return code.startsWith(p)
+    } else {
+      // Préfixe numérique seul : "47" doit matcher "47.xxxx" mais pas "471.xxx"
+      return code.startsWith(p + '.') || code === p
+    }
+  })
 }
 
 const PARIS_ARRONDISSEMENTS = [
@@ -291,11 +384,9 @@ function CityAutocomplete({ cities, value, onChange }: CityAutocompleteProps) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  // Index des villes
   const [citiesIndex, setCitiesIndex]   = useState<CityEntry[]>([])
   const [indexLoading, setIndexLoading] = useState(true)
 
-  // Formulaire
   const [selectedCity,           setSelectedCity]           = useState<CityEntry | null>(null)
   const [selectedContract,       setSelectedContract]       = useState('')
   const [selectedFormation,      setSelectedFormation]      = useState('')
@@ -303,10 +394,10 @@ function App() {
   const [radius,                 setRadius]                 = useState(10)
   const [includeAllLarge,        setIncludeAllLarge]        = useState(false)
 
-  // Résultats
   const [companies,         setCompanies]         = useState<Company[]>([])
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([])
   const [loading,           setLoading]           = useState(false)
+  const [loadError,         setLoadError]         = useState<string | null>(null)
   const [hasSearched,       setHasSearched]       = useState(false)
   const [selectedCompany,   setSelectedCompany]   = useState<Company | null>(null)
   const [currentPage,       setCurrentPage]       = useState(1)
@@ -347,12 +438,14 @@ function App() {
   // ── Chargement département ──────────────────────────────────────────────────
   const loadDeptData = useCallback(async (dept: string): Promise<Company[]> => {
     setLoading(true)
+    setLoadError(null)
     try {
       const data = await fetchGz<DeptData>(`./data/${dept}.json.gz`)
       setCompanies(data.companies)
       return data.companies
     } catch (err) {
-      console.error('Erreur chargement département:', err)
+      const msg = `Impossible de charger les données du département ${dept}. Vérifiez votre connexion.`
+      setLoadError(msg)
       setCompanies([])
       return []
     } finally {
@@ -392,11 +485,11 @@ function App() {
       return haversine(city.lat, city.lon, c.lat, c.lon) <= rad
     })
 
-    // 3. Formation / NAF — bypassé si "hors secteur" coché
+    // 3. Filtre NAF par préfixes — bypassé si "hors secteur" coché
     if (!largeToo && formation && formation !== 'autre') {
-      const codes = FORMATION_NAF_CODES[formation] ?? []
-      if (codes.length > 0) {
-        out = out.filter(c => codes.includes(c.naf_code))
+      const prefixes = FORMATION_NAF_PREFIXES[formation] ?? []
+      if (prefixes.length > 0) {
+        out = out.filter(c => matchesNafPrefixes(c.naf_code, prefixes))
       }
     }
 
@@ -452,7 +545,6 @@ function App() {
     : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredCompanies.length)}`
 
   const isFormValid = !!selectedCity && !!selectedFormation
-
   const selectedFormationName = FORMATIONS.find(f => f.id === selectedFormation)?.name ?? 'ce domaine'
 
   // ── Sous-composants ─────────────────────────────────────────────────────────
@@ -467,7 +559,9 @@ function App() {
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-slate-900 text-sm sm:text-base truncate">{company.name}</h3>
+            <h3 className="font-semibold text-slate-900 text-sm sm:text-base truncate">
+              {company.name.charAt(0).toUpperCase() + company.name.slice(1).toLowerCase()}
+            </h3>
             {company.naf_label && (
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{company.naf_label}</p>
             )}
@@ -523,7 +617,6 @@ function App() {
   // ── Rendu ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center gap-3">
@@ -541,7 +634,6 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
-        {/* Formulaire */}
         <Card className="mb-4 sm:mb-6 shadow-lg">
           <CardHeader className="pb-3 sm:pb-4">
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
@@ -707,6 +799,15 @@ function App() {
         {/* Résultats */}
         {hasSearched && (
           <div ref={resultsRef} className="space-y-4">
+
+            {/* Message d'erreur chargement */}
+            {loadError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-md px-4 py-3 text-sm text-red-800">
+                <span className="flex-shrink-0">⚠️</span>
+                <span>{loadError}</span>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h2 className="text-lg font-semibold text-slate-900">Entreprises trouvées</h2>
               <Badge variant="secondary" className="w-fit">
@@ -717,7 +818,7 @@ function App() {
             {/* Desktop : côte à côte */}
             <div className="hidden lg:grid lg:grid-cols-2 gap-6">
               <div className="space-y-3">
-                {filteredCompanies.length === 0 ? (
+                {filteredCompanies.length === 0 && !loadError ? (
                   <Card className="p-8 text-center">
                     <p className="text-slate-500">Aucune entreprise trouvée avec ces critères</p>
                     <p className="text-sm text-slate-400 mt-2">
@@ -757,7 +858,7 @@ function App() {
                 </TabsList>
 
                 <TabsContent value="list" className="space-y-3">
-                  {filteredCompanies.length === 0 ? (
+                  {filteredCompanies.length === 0 && !loadError ? (
                     <Card className="p-8 text-center">
                       <p className="text-slate-500">Aucune entreprise trouvée</p>
                     </Card>
