@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import './App.css'
-import { 
-  Search, MapPin, Building2, Briefcase, GraduationCap, Target, 
-  ExternalLink, Navigation, ChevronLeft, ChevronRight, ArrowUp, List, Map 
+import {
+  Search, MapPin, Building2, Briefcase, GraduationCap, Target,
+  ExternalLink, Navigation, ChevronLeft, ChevronRight, ArrowUp, List, Map, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,50 +13,61 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MapView } from '@/components/MapView'
 import pako from 'pako'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface Company {
   siret: string
   name: string
   naf_code: string
-  naf_label: string
+  naf_label?: string
   address: string
   postal_code: string
   city: string
   lat: number
-  lng: number
+  lon: number          // notre script génère "lon", pas "lng"
+  arrondissement?: string
 }
 
-interface CityData {
+interface DeptData {
   metadata: {
-    city: string
-    department: string
+    dept: string
+    name: string
     count: number
+    arrondissements?: Record<string, number>
   }
   companies: Company[]
 }
 
-const AVAILABLE_CITIES = [
-  { id: 'paris', name: 'Paris', label: 'Paris (75)' },
-  { id: 'lyon', name: 'Lyon', label: 'Lyon (69)' },
-]
+interface CityEntry {
+  city: string
+  dept: string
+  lat: number
+  lon: number
+}
+
+interface CitiesIndex {
+  cities: CityEntry[]
+}
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const CONTRACT_TYPES = [
-  { id: 'stage', name: 'Stage', label: 'Stage' },
-  { id: 'alternance', name: 'Alternance', label: 'Alternance' },
-  { id: 'cdi', name: 'CDI', label: 'CDI' },
-  { id: 'cdd', name: 'CDD', label: 'CDD' },
+  { id: 'stage',      name: 'Stage' },
+  { id: 'alternance', name: 'Alternance' },
+  { id: 'cdi',        name: 'CDI' },
+  { id: 'cdd',        name: 'CDD' },
 ]
 
 const FORMATIONS = [
   { id: 'informatique', name: 'Informatique / Développement' },
-  { id: 'finance', name: 'Finance / Banque' },
-  { id: 'marketing', name: 'Marketing / Communication' },
-  { id: 'ingenierie', name: 'Ingénierie' },
-  { id: 'rh', name: 'Ressources Humaines' },
-  { id: 'commerce', name: 'Commerce / Vente' },
-  { id: 'autre', name: 'Autre' },
+  { id: 'finance',      name: 'Finance / Banque' },
+  { id: 'marketing',    name: 'Marketing / Communication' },
+  { id: 'ingenierie',   name: 'Ingénierie' },
+  { id: 'rh',           name: 'Ressources Humaines' },
+  { id: 'commerce',     name: 'Commerce / Vente' },
+  { id: 'autre',        name: 'Autre' },
 ]
 
-// Map des codes NAF par formation
 const FORMATION_NAF_CODES: Record<string, string[]> = {
   informatique: ['62.01Z', '62.02A', '62.02B', '62.03Z', '63.11Z', '63.12Z'],
   finance:      ['64.19Z', '64.20Z', '64.30Z', '65.11Z', '66.19A', '66.19B'],
@@ -64,97 +75,214 @@ const FORMATION_NAF_CODES: Record<string, string[]> = {
   ingenierie:   ['71.12B', '72.19Z', '28.15Z', '25.11Z', '43.21A'],
   rh:           ['78.10Z', '78.20Z', '78.30Z', '74.90B'],
   commerce:     ['46.90Z', '47.11A', '47.11B', '47.19A', '45.11Z'],
-  autre:        [], // pas de filtre NAF si "Autre"
+  autre:        [],
 }
 
-// Coordonnées des villes
-const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  paris: { lat: 48.8566, lng: 2.3522 },
-  lyon: { lat: 45.7640, lng: 4.8357 },
-}
-
-// Générer les options d'arrondissements pour Paris
 const PARIS_ARRONDISSEMENTS = [
-  { id: 'all', label: 'Tous' },
+  { id: 'all', label: 'Tous les arrondissements' },
   ...Array.from({ length: 20 }, (_, i) => ({
     id: `750${String(i + 1).padStart(2, '0')}`,
-    label: `${i + 1}${i === 0 ? 'er' : 'e'}`,
+    label: `${i + 1}${i === 0 ? 'er' : 'e'} arrondissement`,
   })),
 ]
 
-// Pagination
 const PAGE_SIZE = 20
 
-function App() {
-  const [selectedCity, setSelectedCity] = useState<string>('')
-  const [selectedContract, setSelectedContract] = useState<string>('')
-  const [selectedFormation, setSelectedFormation] = useState<string>('')
-  const [selectedArrondissement, setSelectedArrondissement] = useState<string>('all')
-  const [radius, setRadius] = useState<number>(10)
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [showScrollTop, setShowScrollTop] = useState(false)
-  const [activeTab, setActiveTab] = useState('list')
+// ─── Helper : décompression .json.gz ──────────────────────────────────────────
 
-  // Refs pour le scroll
-  const resultsRef = useRef<HTMLDivElement>(null)
+async function fetchGz<T>(url: string): Promise<T> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status} — ${url}`)
+  const buf = await res.arrayBuffer()
+  const txt = pako.inflate(new Uint8Array(buf), { to: 'string' })
+  return JSON.parse(txt) as T
+}
+
+// ─── Composant CityAutocomplete ───────────────────────────────────────────────
+
+interface CityAutocompleteProps {
+  cities: CityEntry[]
+  value: CityEntry | null
+  onChange: (city: CityEntry | null) => void
+}
+
+function CityAutocomplete({ cities, value, onChange }: CityAutocompleteProps) {
+  const [query, setQuery]         = useState('')
+  const [open, setOpen]           = useState(false)
+  const [focused, setFocused]     = useState(false)
+  const inputRef                  = useRef<HTMLInputElement>(null)
+  const containerRef              = useRef<HTMLDivElement>(null)
+
+  // Normalise une chaîne pour la comparaison (accents, casse)
+  const normalize = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+  const suggestions = useMemo(() => {
+    if (query.length < 2) return []
+    const q = normalize(query)
+    return cities
+      .filter(c => normalize(c.city).includes(q))
+      .slice(0, 8)
+  }, [query, cities])
+
+  // Sync display quand value change depuis l'extérieur
+  useEffect(() => {
+    if (value) setQuery(`${value.city} (${value.dept})`)
+    else if (!focused) setQuery('')
+  }, [value, focused])
+
+  const handleSelect = (city: CityEntry) => {
+    onChange(city)
+    setQuery(`${city.city} (${city.dept})`)
+    setOpen(false)
+    inputRef.current?.blur()
+  }
+
+  const handleClear = () => {
+    onChange(null)
+    setQuery('')
+    setOpen(false)
+    inputRef.current?.focus()
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value)
+    setOpen(true)
+    if (value) onChange(null)   // invalide la sélection si l'user retape
+  }
+
+  // Ferme le dropdown si clic en dehors
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        // Remet le nom de la ville sélectionnée si l'input est "sale"
+        if (value) setQuery(`${value.city} (${value.dept})`)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [value])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => { setFocused(true); if (query.length >= 2) setOpen(true) }}
+          onBlur={() => setFocused(false)}
+          placeholder="Ex : Lyon, Nantes, Bordeaux..."
+          className="w-full h-10 px-3 pr-8 rounded-md border border-input bg-background text-sm
+                     ring-offset-background placeholder:text-muted-foreground
+                     focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg
+                       max-h-60 overflow-auto text-sm">
+          {suggestions.map(city => (
+            <li
+              key={`${city.city}-${city.dept}`}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(city) }}
+              className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-blue-50"
+            >
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                <span className="font-medium text-slate-800">{city.city}</span>
+              </div>
+              <span className="text-xs text-slate-400 ml-2">Dép. {city.dept}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {open && query.length >= 2 && suggestions.length === 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg px-3 py-2 text-sm text-slate-500">
+          Aucune ville trouvée
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+function App() {
+  // Index des villes (chargé au démarrage)
+  const [citiesIndex, setCitiesIndex]   = useState<CityEntry[]>([])
+  const [indexLoading, setIndexLoading] = useState(true)
+
+  // Formulaire
+  const [selectedCity,           setSelectedCity]           = useState<CityEntry | null>(null)
+  const [selectedContract,       setSelectedContract]       = useState('')
+  const [selectedFormation,      setSelectedFormation]      = useState('')
+  const [selectedArrondissement, setSelectedArrondissement] = useState('all')
+  const [radius,                 setRadius]                 = useState(10)
+
+  // Résultats
+  const [companies,         setCompanies]         = useState<Company[]>([])
+  const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([])
+  const [loading,           setLoading]           = useState(false)
+  const [hasSearched,       setHasSearched]       = useState(false)
+  const [selectedCompany,   setSelectedCompany]   = useState<Company | null>(null)
+  const [currentPage,       setCurrentPage]       = useState(1)
+  const [showScrollTop,     setShowScrollTop]     = useState(false)
+  const [activeTab,         setActiveTab]         = useState('list')
+
+  const resultsRef      = useRef<HTMLDivElement>(null)
   const companyCardsRef = useRef<Record<string, HTMLDivElement | null>>({})
 
-  // Détecter le scroll pour le bouton retour en haut
+  // ── Chargement de l'index des villes au démarrage ──────────────────────────
   useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    fetchGz<CitiesIndex>('./data/cities_index.json.gz')
+      .then(d => setCitiesIndex(d.cities))
+      .catch(() => {
+        // fallback : essai sans base path
+        fetch('./data/cities_index.json')
+          .then(r => r.json())
+          .then((d: CitiesIndex) => setCitiesIndex(d.cities))
+          .catch(console.error)
+      })
+      .finally(() => setIndexLoading(false))
   }, [])
 
-  // Scroll vers les résultats
+  // ── Scroll ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const h = () => setShowScrollTop(window.scrollY > 300)
+    window.addEventListener('scroll', h)
+    return () => window.removeEventListener('scroll', h)
+  }, [])
+
   const scrollToResults = useCallback(() => {
     resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
-  // Scroll vers une entreprise
   const scrollToCompany = useCallback((siret: string) => {
-    const card = companyCardsRef.current[siret]
-    if (card) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
+    companyCardsRef.current[siret]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [])
 
-  // Retour en haut
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
-
-  // Charger les données de la ville (avec pako pour .json.gz et fallback .json)
-  const loadCityData = useCallback(async (cityId: string): Promise<Company[]> => {
+  // ── Chargement des données du département ───────────────────────────────────
+  const loadDeptData = useCallback(async (dept: string): Promise<Company[]> => {
     setLoading(true)
     try {
-      let response: Response
-      let data: CityData
-
-      // Essayer .json.gz d'abord
-      try {
-        response = await fetch(`/data/${cityId}.json.gz`)
-        if (!response.ok) throw new Error('Gzip not found')
-        const buffer = await response.arrayBuffer()
-        const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' })
-        data = JSON.parse(decompressed)
-      } catch {
-        // Fallback vers .json
-        response = await fetch(`/data/${cityId}.json`)
-        data = await response.json()
-      }
-
+      const data = await fetchGz<DeptData>(`./data/${dept}.json.gz`)
       setCompanies(data.companies)
       return data.companies
-    } catch (error) {
-      console.error('Erreur chargement données:', error)
+    } catch (err) {
+      console.error('Erreur chargement département:', err)
       setCompanies([])
       return []
     } finally {
@@ -162,143 +290,169 @@ function App() {
     }
   }, [])
 
-  // Calcul de distance Haversine
-  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLon = (lon2 - lon1) * Math.PI / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
+  // ── Calcul Haversine ────────────────────────────────────────────────────────
+  const haversine = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R   = 6371
+    const dLa = (lat2 - lat1) * Math.PI / 180
+    const dLo = (lon2 - lon1) * Math.PI / 180
+    const a   = Math.sin(dLa/2)**2 +
+                Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLo/2)**2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
   }, [])
 
-  // Filtrer les entreprises par rayon
-  const filterByRadius = useCallback((companies: Company[], center: { lat: number; lng: number }, radiusKm: number) => {
-    return companies.filter((company) => {
-      const distance = calculateDistance(center.lat, center.lng, company.lat, company.lng)
-      return distance <= radiusKm
+  // ── Filtres ─────────────────────────────────────────────────────────────────
+  const applyFilters = useCallback((
+    all: Company[],
+    city: CityEntry,
+    rad: number,
+    formation: string,
+    arrondissement: string
+  ): Company[] => {
+    let out = all
+
+    // 1. Arrondissement (Paris uniquement)
+    if (city.dept === '75' && arrondissement !== 'all') {
+      out = out.filter(c => c.arrondissement === arrondissement || c.postal_code === arrondissement)
+    }
+
+    // 2. Rayon Haversine — note: on filtre sur les entreprises du département entier
+    //    donc le rayon sert à exclure les villes trop loin du centre choisi
+    out = out.filter(c => {
+      if (!c.lat || !c.lon) return false
+      return haversine(city.lat, city.lon, c.lat, c.lon) <= rad
     })
-  }, [calculateDistance])
 
-  // Filtrer par arrondissement (Paris uniquement)
-  const filterByArrondissement = useCallback((companies: Company[], arrondissement: string) => {
-    if (arrondissement === 'all') return companies
-    return companies.filter((company) => company.postal_code === arrondissement)
-  }, [])
+    // 3. Formation / NAF
+    if (formation && formation !== 'autre') {
+      const codes = FORMATION_NAF_CODES[formation] ?? []
+      if (codes.length > 0) {
+        out = out.filter(c => codes.includes(c.naf_code))
+      }
+    }
 
-  // Filtrer par formation (codes NAF)
-  const filterByFormation = useCallback((companies: Company[], formation: string) => {
-    if (formation === 'autre' || !formation) return companies
-    const nafCodes = FORMATION_NAF_CODES[formation]
-    if (!nafCodes || nafCodes.length === 0) return companies
-    return companies.filter((company) => nafCodes.includes(company.naf_code))
-  }, [])
+    return out
+  }, [haversine])
 
-  // Ouvrir Google Maps pour une entreprise (useCallback pour éviter les re-renders)
-  const openGoogleMaps = useCallback((company: Company) => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${company.lat},${company.lng}`
-    window.open(url, '_blank')
-  }, [])
-
-  // Rechercher des offres d'emploi pour une entreprise (useCallback)
-  const searchJobs = useCallback((company: Company) => {
-    const contractType = CONTRACT_TYPES.find(c => c.id === selectedContract)?.name || ''
-    const formation = FORMATIONS.find(f => f.id === selectedFormation)?.name || ''
-    const query = `${company.name} ${contractType} ${formation}`.trim()
-    const url = `https://www.google.com/search?q=${encodeURIComponent(query + ' recrutement')}`
-    window.open(url, '_blank')
-  }, [selectedContract, selectedFormation])
-
-  // Sélectionner une entreprise avec scroll
-  const handleSelectCompany = useCallback((company: Company) => {
-    setSelectedCompany(company)
-    scrollToCompany(company.siret)
-  }, [scrollToCompany])
-
-  // Pagination
-  const paginatedCompanies = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return filteredCompanies.slice(start, start + PAGE_SIZE)
-  }, [filteredCompanies, currentPage])
-
-  const totalPages = useMemo(() => 
-    Math.ceil(filteredCompanies.length / PAGE_SIZE)
-  , [filteredCompanies])
-
-  const paginationInfo = useMemo(() => {
-    const start = filteredCompanies.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
-    const end = Math.min(currentPage * PAGE_SIZE, filteredCompanies.length)
-    return { start, end }
-  }, [filteredCompanies, currentPage])
-
-  // Lancer la recherche
+  // ── Recherche principale ────────────────────────────────────────────────────
   const handleSearch = useCallback(async () => {
     if (!selectedCity || !selectedFormation) return
-    
+
     setHasSearched(true)
     setSelectedCompany(null)
     setCurrentPage(1)
-    
-    const loadedCompanies = await loadCityData(selectedCity)
-    
-    let filtered = [...loadedCompanies]
 
-    // 1. Filtre par arrondissement (si Paris)
-    if (selectedCity === 'paris' && selectedArrondissement !== 'all') {
-      filtered = filterByArrondissement(filtered, selectedArrondissement)
-    }
-
-    // 2. Filtre par rayon
-    const cityCenter = CITY_COORDINATES[selectedCity]
-    if (cityCenter) {
-      filtered = filterByRadius(filtered, cityCenter, radius)
-    }
-
-    // 3. Filtre par formation (NAF)
-    if (selectedFormation && selectedFormation !== 'autre') {
-      filtered = filterByFormation(filtered, selectedFormation)
-    }
-
+    const all      = await loadDeptData(selectedCity.dept)
+    const filtered = applyFilters(all, selectedCity, radius, selectedFormation, selectedArrondissement)
     setFilteredCompanies(filtered)
-    
-    // Scroll vers les résultats après un court délai
-    setTimeout(scrollToResults, 100)
-  }, [selectedCity, selectedFormation, selectedArrondissement, radius, loadCityData, filterByArrondissement, filterByRadius, filterByFormation, scrollToResults])
 
-  // Mettre à jour les filtres quand les critères changent (après une recherche)
+    setTimeout(scrollToResults, 150)
+  }, [selectedCity, selectedFormation, selectedArrondissement, radius, loadDeptData, applyFilters, scrollToResults])
+
+  // ── Re-filtre en temps réel quand rayon / arrondissement / formation changent ──
   useEffect(() => {
-    if (hasSearched && companies.length > 0) {
-      let filtered = [...companies]
+    if (!hasSearched || !selectedCity || companies.length === 0) return
+    const filtered = applyFilters(companies, selectedCity, radius, selectedFormation, selectedArrondissement)
+    setFilteredCompanies(filtered)
+    setCurrentPage(1)
+  }, [radius, selectedArrondissement, selectedFormation, companies, hasSearched, selectedCity, applyFilters])
 
-      if (selectedCity === 'paris' && selectedArrondissement !== 'all') {
-        filtered = filterByArrondissement(filtered, selectedArrondissement)
-      }
-
-      const cityCenter = CITY_COORDINATES[selectedCity]
-      if (cityCenter) {
-        filtered = filterByRadius(filtered, cityCenter, radius)
-      }
-
-      if (selectedFormation && selectedFormation !== 'autre') {
-        filtered = filterByFormation(filtered, selectedFormation)
-      }
-
-      setFilteredCompanies(filtered)
-      setCurrentPage(1)
-    }
-  }, [radius, selectedArrondissement, selectedFormation, companies, hasSearched, selectedCity, filterByArrondissement, filterByRadius, filterByFormation])
-
-  // Réinitialiser l'arrondissement quand on change de ville
-  const handleCityChange = useCallback((value: string) => {
-    setSelectedCity(value)
-    setSelectedArrondissement('all')
+  // ── Actions entreprise ──────────────────────────────────────────────────────
+  const openGoogleMaps = useCallback((c: Company) => {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lon}`, '_blank')
   }, [])
 
-  // Vérifier si le formulaire est valide
-  const isFormValid = selectedCity && selectedFormation
+  const searchJobs = useCallback((c: Company) => {
+    const contract  = CONTRACT_TYPES.find(ct => ct.id === selectedContract)?.name ?? ''
+    const formation = FORMATIONS.find(f => f.id === selectedFormation)?.name ?? ''
+    const q = encodeURIComponent(`${c.name} ${contract} ${formation} recrutement`.trim())
+    window.open(`https://www.google.com/search?q=${q}`, '_blank')
+  }, [selectedContract, selectedFormation])
 
+  const handleSelectCompany = useCallback((c: Company) => {
+    setSelectedCompany(c)
+    scrollToCompany(c.siret)
+  }, [scrollToCompany])
+
+  // ── Pagination ──────────────────────────────────────────────────────────────
+  const totalPages      = Math.ceil(filteredCompanies.length / PAGE_SIZE)
+  const paginatedItems  = useMemo(() => {
+    const s = (currentPage - 1) * PAGE_SIZE
+    return filteredCompanies.slice(s, s + PAGE_SIZE)
+  }, [filteredCompanies, currentPage])
+
+  const rangeLabel = filteredCompanies.length === 0
+    ? '0'
+    : `${(currentPage-1)*PAGE_SIZE + 1}–${Math.min(currentPage*PAGE_SIZE, filteredCompanies.length)}`
+
+  // ── Validité formulaire ─────────────────────────────────────────────────────
+  const isFormValid = !!selectedCity && !!selectedFormation
+
+  // ── Carte entreprise (partagé desktop + mobile) ─────────────────────────────
+  const CompanyCard = ({ company }: { company: Company }) => (
+    <Card
+      ref={(el) => { if (el) companyCardsRef.current[company.siret] = el }}
+      className={`cursor-pointer transition-all hover:shadow-md ${
+        selectedCompany?.siret === company.siret ? 'ring-2 ring-blue-500' : ''
+      }`}
+      onClick={() => handleSelectCompany(company)}
+    >
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-slate-900 text-sm sm:text-base truncate">{company.name}</h3>
+            {company.naf_label && (
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{company.naf_label}</p>
+            )}
+            <p className="text-xs text-slate-400 mt-0.5">{company.naf_code}</p>
+            <div className="flex items-center gap-1 mt-1.5 text-xs text-slate-600">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{company.address}, {company.postal_code} {company.city}</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <Button
+              variant="outline" size="sm"
+              className="text-xs px-2 py-1 h-auto"
+              onClick={(e) => { e.stopPropagation(); openGoogleMaps(company) }}
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />Voir
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs px-2 py-1 h-auto"
+              onClick={(e) => { e.stopPropagation(); searchJobs(company) }}
+            >
+              <Search className="w-3 h-3 mr-1" />Postuler
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  const PaginationBar = ({ mobile = false }) => totalPages > 1 ? (
+    <div className="flex items-center justify-center gap-2 pt-4">
+      <Button variant="outline" size="sm"
+        onClick={() => setCurrentPage(p => Math.max(1, p-1))}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="w-4 h-4" />
+        {!mobile && ' Précédent'}
+      </Button>
+      <span className="text-sm text-slate-600 min-w-[80px] text-center">
+        {mobile ? `${currentPage}/${totalPages}` : `Page ${currentPage} / ${totalPages}`}
+      </span>
+      <Button variant="outline" size="sm"
+        onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
+        disabled={currentPage === totalPages}
+      >
+        {!mobile && 'Suivant '}
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </div>
+  ) : null
+
+  // ── Rendu ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
@@ -310,14 +464,16 @@ function App() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900">ProxiJob</h1>
-              <p className="hidden sm:block text-sm text-slate-500">Trouvez les entreprises qui recrutent près de chez vous</p>
+              <p className="hidden sm:block text-sm text-slate-500">
+                Trouvez les entreprises qui recrutent près de chez vous
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
-        {/* Formulaire de recherche */}
+        {/* Formulaire */}
         <Card className="mb-4 sm:mb-6 shadow-lg">
           <CardHeader className="pb-3 sm:pb-4">
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
@@ -327,111 +483,99 @@ function App() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
               {/* Formation */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4" />
-                  Votre formation *
+                  <GraduationCap className="w-4 h-4" />Votre formation *
                 </label>
                 <Select value={selectedFormation} onValueChange={setSelectedFormation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez..." />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
                   <SelectContent>
-                    {FORMATIONS.map((formation) => (
-                      <SelectItem key={formation.id} value={formation.id}>
-                        {formation.name}
-                      </SelectItem>
+                    {FORMATIONS.map(f => (
+                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {/* Badge d'état pour la formation */}
                 {!selectedFormation && (
                   <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                     Requis pour filtrer par secteur
                   </Badge>
                 )}
                 {selectedFormation === 'autre' && (
-                  <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-200">
-                    Tous les secteurs — aucun filtre NAF appliqué
+                  <Badge variant="outline" className="text-xs bg-slate-50 text-slate-500 border-slate-200">
+                    Tous les secteurs
                   </Badge>
                 )}
               </div>
 
-              {/* Type de contrat */}
-              <div className="space-y-2">
+              {/* Contrat */}
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" />
-                  Type de contrat
+                  <Briefcase className="w-4 h-4" />Type de contrat
                 </label>
                 <Select value={selectedContract} onValueChange={setSelectedContract}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez..." />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
                   <SelectContent>
-                    {CONTRACT_TYPES.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.label}
-                      </SelectItem>
+                    {CONTRACT_TYPES.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Ville */}
-              <div className="space-y-2">
+              {/* Ville — autocomplétion */}
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Ville *
+                  <MapPin className="w-4 h-4" />Votre ville *
                 </label>
-                <Select value={selectedCity} onValueChange={handleCityChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_CITIES.map((city) => (
-                      <SelectItem key={city.id} value={city.id}>
-                        {city.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {indexLoading ? (
+                  <div className="h-10 bg-slate-100 rounded-md animate-pulse" />
+                ) : (
+                  <CityAutocomplete
+                    cities={citiesIndex}
+                    value={selectedCity}
+                    onChange={(city) => {
+                      setSelectedCity(city)
+                      setSelectedArrondissement('all')
+                    }}
+                  />
+                )}
+                {selectedCity && (
+                  <p className="text-xs text-slate-400">
+                    Département {selectedCity.dept} · {selectedCity.lat.toFixed(4)}, {selectedCity.lon.toFixed(4)}
+                  </p>
+                )}
               </div>
 
               {/* Rayon */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                  <Navigation className="w-4 h-4" />
-                  Rayon : {radius} km
+                  <Navigation className="w-4 h-4" />Rayon : {radius} km
                 </label>
                 <Slider
                   value={[radius]}
-                  onValueChange={(value) => setRadius(value[0])}
-                  min={1}
-                  max={50}
-                  step={1}
+                  onValueChange={([v]) => setRadius(v)}
+                  min={1} max={50} step={1}
                   className="py-2 touch-none"
                 />
               </div>
             </div>
 
-            {/* Arrondissement Paris */}
-            {selectedCity === 'paris' && (
-              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+            {/* Arrondissements Paris */}
+            {selectedCity?.dept === '75' && (
+              <div className="mt-3 pt-3 border-t">
                 <div className="max-w-xs">
-                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2 mb-2">
-                    <Building2 className="w-4 h-4" />
-                    Arrondissement
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2 mb-1.5">
+                    <Building2 className="w-4 h-4" />Arrondissement
                   </label>
                   <Select value={selectedArrondissement} onValueChange={setSelectedArrondissement}>
                     <SelectTrigger>
                       <SelectValue placeholder="Tous les arrondissements" />
                     </SelectTrigger>
                     <SelectContent>
-                      {PARIS_ARRONDISSEMENTS.map((arr) => (
-                        <SelectItem key={arr.id} value={arr.id}>
-                          {arr.label}
-                        </SelectItem>
+                      {PARIS_ARRONDISSEMENTS.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -439,21 +583,19 @@ function App() {
               </div>
             )}
 
-            <Button 
+            <Button
               onClick={handleSearch}
-              className="w-full mt-4 sm:mt-6 bg-blue-600 hover:bg-blue-700"
+              className="w-full mt-4 sm:mt-5 bg-blue-600 hover:bg-blue-700"
               size="lg"
               disabled={!isFormValid || loading}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
-                  <span className="animate-spin">⏳</span>
-                  Chargement...
+                  <span className="animate-spin">⏳</span>Chargement...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  <Search className="w-4 h-4" />
-                  Rechercher les entreprises
+                  <Search className="w-4 h-4" />Rechercher les entreprises
                 </span>
               )}
             </Button>
@@ -463,116 +605,30 @@ function App() {
         {/* Résultats */}
         {hasSearched && (
           <div ref={resultsRef} className="space-y-4">
-            {/* Header des résultats */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Entreprises trouvées
-              </h2>
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="secondary">
-                  {paginationInfo.start}-{paginationInfo.end} sur {filteredCompanies.length}
-                </Badge>
-              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Entreprises trouvées</h2>
+              <Badge variant="secondary" className="w-fit">
+                {rangeLabel} sur {filteredCompanies.length} résultat{filteredCompanies.length > 1 ? 's' : ''}
+              </Badge>
             </div>
 
-            {/* Desktop: Layout côte à côte */}
+            {/* Desktop : côte à côte */}
             <div className="hidden lg:grid lg:grid-cols-2 gap-6">
-              {/* Liste des entreprises */}
               <div className="space-y-3">
                 {filteredCompanies.length === 0 ? (
                   <Card className="p-8 text-center">
                     <p className="text-slate-500">Aucune entreprise trouvée avec ces critères</p>
-                    <p className="text-sm text-slate-400 mt-2">Essayez d'élargir votre recherche</p>
+                    <p className="text-sm text-slate-400 mt-2">Essayez d'augmenter le rayon ou de changer la formation</p>
                   </Card>
                 ) : (
                   <>
-                    <div className="space-y-3">
-                      {paginatedCompanies.map((company) => (
-                        <Card 
-                          key={company.siret}
-                          ref={(el) => {
-                            if (el) companyCardsRef.current[company.siret] = el
-                          }}
-                          className={`cursor-pointer transition-all hover:shadow-md ${
-                            selectedCompany?.siret === company.siret ? 'ring-2 ring-blue-500' : ''
-                          }`}
-                          onClick={() => handleSelectCompany(company)}
-                        >
-                          <CardContent className="p-3 sm:p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-slate-900 text-sm sm:text-base truncate">{company.name}</h3>
-                                <p className="text-xs sm:text-sm text-slate-500 mt-1">{company.naf_label}</p>
-                                <div className="flex items-center gap-1 mt-2 text-xs sm:text-sm text-slate-600">
-                                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                                  <span className="truncate">{company.address}, {company.postal_code}</span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col gap-2 flex-shrink-0">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="text-xs px-2 py-1 h-auto"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openGoogleMaps(company)
-                                  }}
-                                >
-                                  <ExternalLink className="w-3 h-3 mr-1" />
-                                  Voir
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  className="text-xs px-2 py-1 h-auto"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    searchJobs(company)
-                                  }}
-                                >
-                                  <Search className="w-3 h-3 mr-1" />
-                                  Postuler
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-center gap-2 pt-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          <ChevronLeft className="w-4 h-4 mr-1" />
-                          Précédent
-                        </Button>
-                        <span className="text-sm text-slate-600">
-                          Page {currentPage} / {totalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          Suivant
-                          <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </div>
-                    )}
+                    {paginatedItems.map(c => <CompanyCard key={c.siret} company={c} />)}
+                    <PaginationBar />
                   </>
                 )}
               </div>
-
-              {/* Carte Leaflet - sticky */}
-              <div className="lg:sticky lg:top-6 space-y-4">
-                <h2 className="text-lg font-semibold text-slate-900">Carte</h2>
-                <Card className="overflow-hidden h-[calc(100vh-200px)] min-h-[500px]">
+              <div className="lg:sticky lg:top-6">
+                <Card className="overflow-hidden h-[calc(100vh-180px)] min-h-[500px]">
                   <MapView
                     companies={filteredCompanies}
                     selectedCompany={selectedCompany}
@@ -584,98 +640,27 @@ function App() {
               </div>
             </div>
 
-            {/* Mobile & Tablette: Onglets */}
+            {/* Mobile / tablette : onglets */}
             <div className="lg:hidden">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="list" className="flex items-center gap-2">
-                    <List className="w-4 h-4" />
-                    Liste
+                    <List className="w-4 h-4" />Liste
                   </TabsTrigger>
                   <TabsTrigger value="map" className="flex items-center gap-2">
-                    <Map className="w-4 h-4" />
-                    Carte
+                    <Map className="w-4 h-4" />Carte
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="list" className="space-y-3">
                   {filteredCompanies.length === 0 ? (
                     <Card className="p-8 text-center">
-                      <p className="text-slate-500">Aucune entreprise trouvée avec ces critères</p>
-                      <p className="text-sm text-slate-400 mt-2">Essayez d'élargir votre recherche</p>
+                      <p className="text-slate-500">Aucune entreprise trouvée</p>
                     </Card>
                   ) : (
                     <>
-                      <div className="space-y-3">
-                        {paginatedCompanies.map((company) => (
-                          <Card 
-                            key={company.siret}
-                            ref={(el) => {
-                              if (el) companyCardsRef.current[company.siret] = el
-                            }}
-                            className={`cursor-pointer transition-all hover:shadow-md ${
-                              selectedCompany?.siret === company.siret ? 'ring-2 ring-blue-500' : ''
-                            }`}
-                            onClick={() => handleSelectCompany(company)}
-                          >
-                            <CardContent className="p-3">
-                              <h3 className="font-semibold text-slate-900 text-sm">{company.name}</h3>
-                              <p className="text-xs text-slate-500 mt-1">{company.naf_label}</p>
-                              <p className="text-xs text-slate-600 mt-1">{company.address}</p>
-                              <div className="flex flex-col gap-2 mt-3">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="w-full text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openGoogleMaps(company)
-                                  }}
-                                >
-                                  <ExternalLink className="w-3 h-3 mr-1" />
-                                  Voir sur Google Maps
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  className="w-full text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    searchJobs(company)
-                                  }}
-                                >
-                                  <Search className="w-3 h-3 mr-1" />
-                                  Postuler
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-
-                      {/* Pagination mobile */}
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-2 pt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage === 1}
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          <span className="text-sm text-slate-600">
-                            {currentPage} / {totalPages}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages}
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
+                      {paginatedItems.map(c => <CompanyCard key={c.siret} company={c} />)}
+                      <PaginationBar mobile />
                     </>
                   )}
                 </TabsContent>
@@ -706,40 +691,38 @@ function App() {
               Prêt à trouver votre prochain emploi ?
             </h2>
             <p className="text-slate-600 max-w-lg mx-auto mb-8 px-4">
-              Renseignez vos critères ci-dessus pour découvrir les entreprises qui recrutent 
-              dans votre domaine et à proximité de chez vous.
+              Tapez votre ville, choisissez votre formation et découvrez toutes les entreprises
+              qui recrutent à proximité — données INSEE, 27 700 établissements en France.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 text-sm text-slate-500 px-4">
-              <div className="flex items-center justify-center sm:justify-start gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Building2 className="w-5 h-5 text-blue-600" />
-                <span>Entreprises de +30 salariés</span>
+                <span>+30 salariés · France entière</span>
               </div>
-              <div className="flex items-center justify-center sm:justify-start gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <MapPin className="w-5 h-5 text-blue-600" />
-                <span>Recherche géolocalisée</span>
+                <span>4 700 villes indexées</span>
               </div>
-              <div className="flex items-center justify-center sm:justify-start gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Target className="w-5 h-5 text-blue-600" />
-                <span>Ciblage par secteur</span>
+                <span>Filtrage par secteur NAF</span>
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-white border-t mt-8 sm:mt-12">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
           <p className="text-center text-xs sm:text-sm text-slate-500">
-            ProxiJob - Données : INSEE Sirene (entreprises de +30 salariés)
+            ProxiJob · Données INSEE Sirene · Établissements de +30 salariés · France entière
           </p>
         </div>
       </footer>
 
-      {/* Bouton retour en haut */}
       {showScrollTop && (
         <Button
-          onClick={scrollToTop}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 rounded-full shadow-lg z-50"
           size="icon"
         >
