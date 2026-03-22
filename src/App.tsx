@@ -24,7 +24,7 @@ interface Company {
   postal_code: string
   city: string
   lat: number
-  lon: number          // notre script génère "lon", pas "lng"
+  lon: number
   arrondissement?: string
 }
 
@@ -92,7 +92,7 @@ const FORMATION_NAF_CODES: Record<string, string[]> = {
     '69.20Z', '70.22Z', '74.90B',
     // Immobilier
     '68.10Z', '68.20A', '68.20B', '68.31Z', '68.32A',
-    // Grandes entreprises cotées (toutes ont une DAF)
+    // Secteur public (trésor, collectivités)
     '84.11Z', '84.12Z',
   ],
   marketing: [
@@ -103,10 +103,10 @@ const FORMATION_NAF_CODES: Record<string, string[]> = {
     '59.11A', '59.11B', '59.11C', '59.12Z', '59.20Z',
     '60.10Z', '60.20A', '60.20B',
     '90.01Z', '90.02Z', '82.30Z',
-    // E-commerce & distribution (équipes growth/digital)
+    // E-commerce & distribution
     '47.91A', '47.91B', '47.99B',
     '46.90Z', '47.11A', '47.19A',
-    // Conseil
+    // Conseil & design
     '74.10Z', '74.20Z', '74.90B',
   ],
   ingenierie: [
@@ -122,7 +122,7 @@ const FORMATION_NAF_CODES: Record<string, string[]> = {
     '42.21Z', '42.22Z', '43.21A', '43.22A', '43.22B',
     '35.11Z', '35.12Z', '35.13Z', '35.14Z',
     // Aéronautique / défense
-    '30.30Z', '30.40Z', '33.16Z', '33.19Z',
+    '30.40Z', '33.16Z', '33.19Z',
   ],
   rh: [
     // Cœur RH / recrutement / intérim
@@ -132,7 +132,7 @@ const FORMATION_NAF_CODES: Record<string, string[]> = {
     '85.59A', '85.59B', '85.60Z',
     // Conseil RH / coaching
     '70.22Z', '74.90B',
-    // Grandes entreprises avec DRH structurée
+    // Secteur public (DRH structurées)
     '84.11Z', '84.12Z', '84.13Z',
     // Santé & social (gros employeurs)
     '86.10Z', '86.21Z', '87.10A', '87.10B', '87.30A', '88.10A', '88.10B',
@@ -146,9 +146,7 @@ const FORMATION_NAF_CODES: Record<string, string[]> = {
     '47.41Z', '47.42Z', '47.43Z', '47.51Z', '47.71Z', '47.72A',
     // E-commerce
     '47.91A', '47.91B',
-    // Automobile
-    '45.11Z', '45.19Z', '45.20A', '45.31Z', '45.32Z',
-    // Hôtellerie / restauration (commerce client)
+    // Hôtellerie / restauration
     '55.10Z', '55.20Z', '56.10A', '56.10B', '56.29A',
     // Conseil commercial
     '70.22Z', '73.20Z',
@@ -185,25 +183,21 @@ interface CityAutocompleteProps {
 }
 
 function CityAutocomplete({ cities, value, onChange }: CityAutocompleteProps) {
-  const [query, setQuery]         = useState('')
-  const [open, setOpen]           = useState(false)
-  const [focused, setFocused]     = useState(false)
-  const inputRef                  = useRef<HTMLInputElement>(null)
-  const containerRef              = useRef<HTMLDivElement>(null)
+  const [query, setQuery]     = useState('')
+  const [open, setOpen]       = useState(false)
+  const [focused, setFocused] = useState(false)
+  const inputRef              = useRef<HTMLInputElement>(null)
+  const containerRef          = useRef<HTMLDivElement>(null)
 
-  // Normalise une chaîne pour la comparaison (accents, casse)
   const normalize = (s: string) =>
     s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
   const suggestions = useMemo(() => {
     if (query.length < 2) return []
     const q = normalize(query)
-    return cities
-      .filter(c => normalize(c.city).includes(q))
-      .slice(0, 8)
+    return cities.filter(c => normalize(c.city).includes(q)).slice(0, 8)
   }, [query, cities])
 
-  // Sync display quand value change depuis l'extérieur
   useEffect(() => {
     if (value) setQuery(`${value.city} (${value.dept})`)
     else if (!focused) setQuery('')
@@ -226,15 +220,13 @@ function CityAutocomplete({ cities, value, onChange }: CityAutocompleteProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value)
     setOpen(true)
-    if (value) onChange(null)   // invalide la sélection si l'user retape
+    if (value) onChange(null)
   }
 
-  // Ferme le dropdown si clic en dehors
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
-        // Remet le nom de la ville sélectionnée si l'input est "sale"
         if (value) setQuery(`${value.city} (${value.dept})`)
       }
     }
@@ -299,7 +291,7 @@ function CityAutocomplete({ cities, value, onChange }: CityAutocompleteProps) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
-  // Index des villes (chargé au démarrage)
+  // Index des villes
   const [citiesIndex, setCitiesIndex]   = useState<CityEntry[]>([])
   const [indexLoading, setIndexLoading] = useState(true)
 
@@ -309,6 +301,7 @@ function App() {
   const [selectedFormation,      setSelectedFormation]      = useState('')
   const [selectedArrondissement, setSelectedArrondissement] = useState('all')
   const [radius,                 setRadius]                 = useState(10)
+  const [includeAllLarge,        setIncludeAllLarge]        = useState(false)
 
   // Résultats
   const [companies,         setCompanies]         = useState<Company[]>([])
@@ -323,12 +316,11 @@ function App() {
   const resultsRef      = useRef<HTMLDivElement>(null)
   const companyCardsRef = useRef<Record<string, HTMLDivElement | null>>({})
 
-  // ── Chargement de l'index des villes au démarrage ──────────────────────────
+  // ── Chargement index villes ─────────────────────────────────────────────────
   useEffect(() => {
     fetchGz<CitiesIndex>('./data/cities_index.json.gz')
       .then(d => setCitiesIndex(d.cities))
       .catch(() => {
-        // fallback : essai sans base path
         fetch('./data/cities_index.json')
           .then(r => r.json())
           .then((d: CitiesIndex) => setCitiesIndex(d.cities))
@@ -352,7 +344,7 @@ function App() {
     companyCardsRef.current[siret]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [])
 
-  // ── Chargement des données du département ───────────────────────────────────
+  // ── Chargement département ──────────────────────────────────────────────────
   const loadDeptData = useCallback(async (dept: string): Promise<Company[]> => {
     setLoading(true)
     try {
@@ -368,14 +360,14 @@ function App() {
     }
   }, [])
 
-  // ── Calcul Haversine ────────────────────────────────────────────────────────
+  // ── Haversine ───────────────────────────────────────────────────────────────
   const haversine = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R   = 6371
     const dLa = (lat2 - lat1) * Math.PI / 180
     const dLo = (lon2 - lon1) * Math.PI / 180
-    const a   = Math.sin(dLa/2)**2 +
-                Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLo/2)**2
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+    const a   = Math.sin(dLa / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLo / 2) ** 2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }, [])
 
   // ── Filtres ─────────────────────────────────────────────────────────────────
@@ -384,7 +376,8 @@ function App() {
     city: CityEntry,
     rad: number,
     formation: string,
-    arrondissement: string
+    arrondissement: string,
+    largeToo: boolean,
   ): Company[] => {
     let out = all
 
@@ -393,15 +386,14 @@ function App() {
       out = out.filter(c => c.arrondissement === arrondissement || c.postal_code === arrondissement)
     }
 
-    // 2. Rayon Haversine — note: on filtre sur les entreprises du département entier
-    //    donc le rayon sert à exclure les villes trop loin du centre choisi
+    // 2. Rayon Haversine
     out = out.filter(c => {
       if (!c.lat || !c.lon) return false
       return haversine(city.lat, city.lon, c.lat, c.lon) <= rad
     })
 
-    // 3. Formation / NAF
-    if (formation && formation !== 'autre') {
+    // 3. Formation / NAF — bypassé si "hors secteur" coché
+    if (!largeToo && formation && formation !== 'autre') {
       const codes = FORMATION_NAF_CODES[formation] ?? []
       if (codes.length > 0) {
         out = out.filter(c => codes.includes(c.naf_code))
@@ -414,25 +406,22 @@ function App() {
   // ── Recherche principale ────────────────────────────────────────────────────
   const handleSearch = useCallback(async () => {
     if (!selectedCity || !selectedFormation) return
-
     setHasSearched(true)
     setSelectedCompany(null)
     setCurrentPage(1)
-
     const all      = await loadDeptData(selectedCity.dept)
-    const filtered = applyFilters(all, selectedCity, radius, selectedFormation, selectedArrondissement)
+    const filtered = applyFilters(all, selectedCity, radius, selectedFormation, selectedArrondissement, includeAllLarge)
     setFilteredCompanies(filtered)
-
     setTimeout(scrollToResults, 150)
-  }, [selectedCity, selectedFormation, selectedArrondissement, radius, loadDeptData, applyFilters, scrollToResults])
+  }, [selectedCity, selectedFormation, selectedArrondissement, radius, includeAllLarge, loadDeptData, applyFilters, scrollToResults])
 
-  // ── Re-filtre en temps réel quand rayon / arrondissement / formation changent ──
+  // ── Re-filtre en temps réel ─────────────────────────────────────────────────
   useEffect(() => {
     if (!hasSearched || !selectedCity || companies.length === 0) return
-    const filtered = applyFilters(companies, selectedCity, radius, selectedFormation, selectedArrondissement)
+    const filtered = applyFilters(companies, selectedCity, radius, selectedFormation, selectedArrondissement, includeAllLarge)
     setFilteredCompanies(filtered)
     setCurrentPage(1)
-  }, [radius, selectedArrondissement, selectedFormation, companies, hasSearched, selectedCity, applyFilters])
+  }, [radius, selectedArrondissement, selectedFormation, includeAllLarge, companies, hasSearched, selectedCity, applyFilters])
 
   // ── Actions entreprise ──────────────────────────────────────────────────────
   const openGoogleMaps = useCallback((c: Company) => {
@@ -452,20 +441,21 @@ function App() {
   }, [scrollToCompany])
 
   // ── Pagination ──────────────────────────────────────────────────────────────
-  const totalPages      = Math.ceil(filteredCompanies.length / PAGE_SIZE)
-  const paginatedItems  = useMemo(() => {
+  const totalPages     = Math.ceil(filteredCompanies.length / PAGE_SIZE)
+  const paginatedItems = useMemo(() => {
     const s = (currentPage - 1) * PAGE_SIZE
     return filteredCompanies.slice(s, s + PAGE_SIZE)
   }, [filteredCompanies, currentPage])
 
   const rangeLabel = filteredCompanies.length === 0
     ? '0'
-    : `${(currentPage-1)*PAGE_SIZE + 1}–${Math.min(currentPage*PAGE_SIZE, filteredCompanies.length)}`
+    : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredCompanies.length)}`
 
-  // ── Validité formulaire ─────────────────────────────────────────────────────
   const isFormValid = !!selectedCity && !!selectedFormation
 
-  // ── Carte entreprise (partagé desktop + mobile) ─────────────────────────────
+  const selectedFormationName = FORMATIONS.find(f => f.id === selectedFormation)?.name ?? 'ce domaine'
+
+  // ── Sous-composants ─────────────────────────────────────────────────────────
   const CompanyCard = ({ company }: { company: Company }) => (
     <Card
       ref={(el) => { if (el) companyCardsRef.current[company.siret] = el }}
@@ -508,10 +498,10 @@ function App() {
     </Card>
   )
 
-  const PaginationBar = ({ mobile = false }) => totalPages > 1 ? (
+  const PaginationBar = ({ mobile = false }: { mobile?: boolean }) => totalPages > 1 ? (
     <div className="flex items-center justify-center gap-2 pt-4">
       <Button variant="outline" size="sm"
-        onClick={() => setCurrentPage(p => Math.max(1, p-1))}
+        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
         disabled={currentPage === 1}
       >
         <ChevronLeft className="w-4 h-4" />
@@ -521,7 +511,7 @@ function App() {
         {mobile ? `${currentPage}/${totalPages}` : `Page ${currentPage} / ${totalPages}`}
       </span>
       <Button variant="outline" size="sm"
-        onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
+        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
         disabled={currentPage === totalPages}
       >
         {!mobile && 'Suivant '}
@@ -602,7 +592,7 @@ function App() {
                 </Select>
               </div>
 
-              {/* Ville — autocomplétion */}
+              {/* Ville */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                   <MapPin className="w-4 h-4" />Votre ville *
@@ -661,6 +651,40 @@ function App() {
               </div>
             )}
 
+            {/* Option grandes entreprises */}
+            <div className="mt-3 pt-3 border-t">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={includeAllLarge}
+                  onChange={e => setIncludeAllLarge(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer flex-shrink-0"
+                />
+                <div className="space-y-1.5">
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 leading-none">
+                    Afficher les résultats hors secteur spécialisé
+                  </span>
+                  {includeAllLarge ? (
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200
+                                    rounded-md px-3 py-2 text-xs text-amber-800">
+                      <span className="flex-shrink-0 mt-0.5">⚠️</span>
+                      <span>
+                        Toutes les entreprises du rayon sont affichées, sans filtre de secteur.
+                        Les établissements de <strong>30 salariés et plus</strong> sont susceptibles
+                        d'avoir un département <strong>{selectedFormationName}</strong> en interne,
+                        même si leur activité principale est différente.
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Cochez pour voir aussi les entreprises d'autres secteurs — elles ont souvent
+                      un département {selectedFormationName.toLowerCase()} en interne.
+                    </p>
+                  )}
+                </div>
+              </label>
+            </div>
+
             <Button
               onClick={handleSearch}
               className="w-full mt-4 sm:mt-5 bg-blue-600 hover:bg-blue-700"
@@ -696,7 +720,9 @@ function App() {
                 {filteredCompanies.length === 0 ? (
                   <Card className="p-8 text-center">
                     <p className="text-slate-500">Aucune entreprise trouvée avec ces critères</p>
-                    <p className="text-sm text-slate-400 mt-2">Essayez d'augmenter le rayon ou de changer la formation</p>
+                    <p className="text-sm text-slate-400 mt-2">
+                      Essayez d'augmenter le rayon, de changer la formation, ou d'activer l'option "hors secteur"
+                    </p>
                   </Card>
                 ) : (
                   <>
