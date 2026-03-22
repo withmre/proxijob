@@ -69,13 +69,91 @@ const FORMATIONS = [
 ]
 
 const FORMATION_NAF_CODES: Record<string, string[]> = {
-  informatique: ['62.01Z', '62.02A', '62.02B', '62.03Z', '63.11Z', '63.12Z'],
-  finance:      ['64.19Z', '64.20Z', '64.30Z', '65.11Z', '66.19A', '66.19B'],
-  marketing:    ['73.11Z', '73.12Z', '73.20Z', '70.21Z'],
-  ingenierie:   ['71.12B', '72.19Z', '28.15Z', '25.11Z', '43.21A'],
-  rh:           ['78.10Z', '78.20Z', '78.30Z', '74.90B'],
-  commerce:     ['46.90Z', '47.11A', '47.11B', '47.19A', '45.11Z'],
-  autre:        [],
+  informatique: [
+    // Cœur IT
+    '62.01Z', '62.02A', '62.02B', '62.03Z', '62.09Z',
+    '63.11Z', '63.12Z', '63.91Z',
+    // Éditeurs & télécoms
+    '58.21Z', '58.29A', '58.29B', '58.29C',
+    '61.10Z', '61.20Z', '61.30Z', '61.90Z',
+    // Conseil & ingénierie numérique
+    '70.22Z', '71.12B', '72.19Z', '74.90B',
+    // Finance/banque (grosses DSI)
+    '64.19Z', '64.20Z', '65.11Z', '66.19A',
+    // Industrie tech
+    '26.11Z', '26.20Z', '26.30Z', '27.90Z',
+  ],
+  finance: [
+    // Cœur finance/banque/assurance
+    '64.11Z', '64.19Z', '64.20Z', '64.30Z',
+    '65.11Z', '65.12Z', '65.20Z',
+    '66.11Z', '66.12Z', '66.19A', '66.19B', '66.22Z', '66.29Z',
+    // Conseil / audit / expertise comptable
+    '69.20Z', '70.22Z', '74.90B',
+    // Immobilier
+    '68.10Z', '68.20A', '68.20B', '68.31Z', '68.32A',
+    // Grandes entreprises cotées (toutes ont une DAF)
+    '84.11Z', '84.12Z',
+  ],
+  marketing: [
+    // Cœur pub / com / marketing
+    '73.11Z', '73.12Z', '73.20Z',
+    '70.21Z', '70.22Z',
+    // Médias, édition, événementiel
+    '59.11A', '59.11B', '59.11C', '59.12Z', '59.20Z',
+    '60.10Z', '60.20A', '60.20B',
+    '90.01Z', '90.02Z', '82.30Z',
+    // E-commerce & distribution (équipes growth/digital)
+    '47.91A', '47.91B', '47.99B',
+    '46.90Z', '47.11A', '47.19A',
+    // Conseil
+    '74.10Z', '74.20Z', '74.90B',
+  ],
+  ingenierie: [
+    // Bureau d'études / ingénierie
+    '71.11Z', '71.12A', '71.12B', '72.19Z',
+    // Industrie manufacturing
+    '24.10Z', '24.20Z', '25.11Z', '25.61Z', '25.62Z',
+    '28.11Z', '28.15Z', '28.22Z', '28.29Z',
+    '29.10Z', '29.20Z', '29.32Z',
+    '30.11Z', '30.20Z', '30.30Z',
+    // Construction & énergie
+    '41.10A', '41.10B', '41.20A', '41.20B',
+    '42.21Z', '42.22Z', '43.21A', '43.22A', '43.22B',
+    '35.11Z', '35.12Z', '35.13Z', '35.14Z',
+    // Aéronautique / défense
+    '30.30Z', '30.40Z', '33.16Z', '33.19Z',
+  ],
+  rh: [
+    // Cœur RH / recrutement / intérim
+    '78.10Z', '78.20Z', '78.30Z',
+    '80.10Z', '80.20Z', '80.30Z',
+    // Formation professionnelle
+    '85.59A', '85.59B', '85.60Z',
+    // Conseil RH / coaching
+    '70.22Z', '74.90B',
+    // Grandes entreprises avec DRH structurée
+    '84.11Z', '84.12Z', '84.13Z',
+    // Santé & social (gros employeurs)
+    '86.10Z', '86.21Z', '87.10A', '87.10B', '87.30A', '88.10A', '88.10B',
+  ],
+  commerce: [
+    // Distribution & retail
+    '45.11Z', '45.19Z', '45.20A',
+    '46.10Z', '46.90Z',
+    '47.11A', '47.11B', '47.11C', '47.11D', '47.11E',
+    '47.19A', '47.19B',
+    '47.41Z', '47.42Z', '47.43Z', '47.51Z', '47.71Z', '47.72A',
+    // E-commerce
+    '47.91A', '47.91B',
+    // Automobile
+    '45.11Z', '45.19Z', '45.20A', '45.31Z', '45.32Z',
+    // Hôtellerie / restauration (commerce client)
+    '55.10Z', '55.20Z', '56.10A', '56.10B', '56.29A',
+    // Conseil commercial
+    '70.22Z', '73.20Z',
+  ],
+  autre: [],
 }
 
 const PARIS_ARRONDISSEMENTS = [
